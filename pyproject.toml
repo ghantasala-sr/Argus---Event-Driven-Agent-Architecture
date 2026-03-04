@@ -33,7 +33,26 @@ build-backend = "poetry.core.masonry.api"
 [tool.black]
 line-length = 100
 target-version = ["py312"]
-extend-exclude = '''/agents/(annotated_types|certifi|cffi|charset_normalizer|cryptography|github|idna|jwt|nacl|pycparser|pydantic|pydantic_core|requests|typing_extensions\.py|typing_inspection|urllib3)/'''
+extend-exclude = '''
+/(
+  agents/annotated_types
+  | agents/certifi
+  | agents/cffi
+  | agents/charset_normalizer
+  | agents/cryptography
+  | agents/github
+  | agents/idna
+  | agents/jwt
+  | agents/nacl
+  | agents/pycparser
+  | agents/pydantic
+  | agents/pydantic_core
+  | agents/requests
+  | agents/typing_extensions\.py
+  | agents/typing_inspection
+  | agents/urllib3
+)/
+'''
 
 [tool.ruff]
 line-length = 100
