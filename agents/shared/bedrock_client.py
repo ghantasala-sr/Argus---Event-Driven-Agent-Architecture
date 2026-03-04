@@ -6,11 +6,10 @@ Provides a unified interface to Amazon Bedrock models with:
 - Retry logic with exponential backoff
 """
 
-import json
 import logging
 import os
 import time
-from typing import Any, Optional
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
@@ -73,8 +72,8 @@ class BedrockClient:
 
     def __init__(
         self,
-        region: Optional[str] = None,
-        model_id: Optional[str] = None,
+        region: str | None = None,
+        model_id: str | None = None,
     ) -> None:
         self.region = region or os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
         self.default_model_id = model_id or os.environ.get("MODEL_ID", "")
@@ -83,8 +82,8 @@ class BedrockClient:
     def invoke(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
-        model_id: Optional[str] = None,
+        system_prompt: str | None = None,
+        model_id: str | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.1,
     ) -> BedrockResponse:
@@ -105,9 +104,7 @@ class BedrockClient:
         """
         resolved_model = model_id or self.default_model_id
         if not resolved_model:
-            raise ValueError(
-                "No model_id specified. Set MODEL_ID env var or pass model_id."
-            )
+            raise ValueError("No model_id specified. Set MODEL_ID env var or pass model_id.")
 
         messages = [
             {
@@ -129,7 +126,7 @@ class BedrockClient:
             kwargs["system"] = [{"text": system_prompt}]
 
         # Retry with exponential backoff for throttling
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(MAX_RETRIES):
             try:
                 start = time.monotonic()

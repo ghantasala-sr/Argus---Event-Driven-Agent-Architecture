@@ -9,10 +9,9 @@ Performs two levels of analysis:
 import logging
 import re
 import time
-from typing import Any, Optional
+from typing import Any
 
 import boto3
-
 from shared.bedrock_client import BedrockClient, BedrockResponse
 from shared.models import (
     DiffChunk,
@@ -113,7 +112,7 @@ For each issue found, respond in this exact JSON format:
   "findings": [
     {
       "severity": "CRITICAL|WARNING|INFO",
-      "category": "sql_injection|xss|command_injection|path_traversal|auth_flaw|data_exposure|ssrf|deserialization|other",
+      "category": "sql_injection|xss|path_traversal|auth_flaw|data_exposure|other",
       "file": "path/to/file.py",
       "line": 42,
       "message": "Brief description of the vulnerability",
@@ -174,8 +173,8 @@ class SecurityAgent:
     def __init__(
         self,
         bedrock_client: BedrockClient,
-        dynamodb_table: Optional[str] = None,
-        region: Optional[str] = None,
+        dynamodb_table: str | None = None,
+        region: str | None = None,
     ) -> None:
         self.bedrock = bedrock_client
         self.dynamodb_table = dynamodb_table
@@ -217,9 +216,7 @@ class SecurityAgent:
         logger.info("Found %d secrets via regex", len(regex_findings))
 
         # Step 2: LLM analysis per chunk
-        logger.info(
-            "Running LLM analysis on %d chunks", len(parsed_event.chunks)
-        )
+        logger.info("Running LLM analysis on %d chunks", len(parsed_event.chunks))
         for chunk in parsed_event.chunks:
             try:
                 llm_findings, response = self._analyze_chunk(chunk)
@@ -321,9 +318,7 @@ class SecurityAgent:
 
         return findings
 
-    def _analyze_chunk(
-        self, chunk: DiffChunk
-    ) -> tuple[list[Finding], BedrockResponse]:
+    def _analyze_chunk(self, chunk: DiffChunk) -> tuple[list[Finding], BedrockResponse]:
         """Analyze a diff chunk using Nova Pro for security vulnerabilities.
 
         Args:
@@ -343,9 +338,7 @@ class SecurityAgent:
         findings = self._parse_llm_response(response.text, chunk)
         return findings, response
 
-    def _parse_llm_response(
-        self, response_text: str, chunk: DiffChunk
-    ) -> list[Finding]:
+    def _parse_llm_response(self, response_text: str, chunk: DiffChunk) -> list[Finding]:
         """Parse the LLM JSON response into Finding objects.
 
         Args:

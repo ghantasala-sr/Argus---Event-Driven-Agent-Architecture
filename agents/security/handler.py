@@ -10,10 +10,9 @@ import os
 from typing import Any
 
 import boto3
-
+from security.agent import SecurityAgent
 from shared.bedrock_client import BedrockClient
 from shared.models import ParsedPREvent, SecurityReviewEvent
-from security.agent import SecurityAgent
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

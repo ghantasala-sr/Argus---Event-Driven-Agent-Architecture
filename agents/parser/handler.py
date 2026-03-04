@@ -15,7 +15,6 @@ import os
 from typing import Any
 
 import boto3
-
 from shared.github_client import GitHubClient
 from shared.models import PRWebhookEvent
 from shared.transport import get_transport

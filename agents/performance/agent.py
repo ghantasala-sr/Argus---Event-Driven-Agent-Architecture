@@ -2,10 +2,8 @@
 
 import logging
 import time
-from typing import Optional
 
 import boto3
-
 from shared.bedrock_client import BedrockClient, BedrockResponse
 from shared.models import DiffChunk, Finding, ParsedPREvent, SecurityReviewEvent, Severity
 
@@ -43,6 +41,7 @@ IMPORTANT RULES:
 - Stay concise.
 """
 
+
 def _build_chunk_prompt(chunk: DiffChunk) -> str:
     parts = [f"Review this code diff (chunk {chunk.chunk_index + 1}/{chunk.total_chunks}):\n"]
     for file in chunk.files:
@@ -53,8 +52,14 @@ def _build_chunk_prompt(chunk: DiffChunk) -> str:
         parts.append(f"```diff\n{patch}\n```\n")
     return "\n".join(parts)
 
+
 class PerformanceAgent:
-    def __init__(self, bedrock_client: BedrockClient, dynamodb_table: Optional[str] = None, region: Optional[str] = None):
+    def __init__(
+        self,
+        bedrock_client: BedrockClient,
+        dynamodb_table: str | None = None,
+        region: str | None = None,
+    ):
         self.bedrock = bedrock_client
         self.dynamodb_table = dynamodb_table
         self.region = region or "us-east-1"
@@ -102,46 +107,68 @@ class PerformanceAgent:
         )
 
         if self.table:
-             self._write_findings(perf_event)
+            self._write_findings(perf_event)
 
         return perf_event
 
     def _analyze_chunk(self, chunk: DiffChunk) -> tuple[list[Finding], BedrockResponse]:
         prompt = _build_chunk_prompt(chunk)
-        response = self.bedrock.invoke(prompt=prompt, system_prompt=PERFORMANCE_SYSTEM_PROMPT, temperature=0.1, max_tokens=2048)
+        response = self.bedrock.invoke(
+            prompt=prompt, system_prompt=PERFORMANCE_SYSTEM_PROMPT, temperature=0.1, max_tokens=2048
+        )
         findings = self._parse_llm_response(response.text, chunk)
         return findings, response
 
     def _parse_llm_response(self, response_text: str, chunk: DiffChunk) -> list[Finding]:
         import json
+
         findings = []
         try:
             json_str = response_text.strip()
-            if "```json" in json_str: json_str = json_str.split("```json")[1].split("```")[0].strip()
-            elif "```" in json_str: json_str = json_str.split("```")[1].split("```")[0].strip()
+            if "```json" in json_str:
+                json_str = json_str.split("```json")[1].split("```")[0].strip()
+            elif "```" in json_str:
+                json_str = json_str.split("```")[1].split("```")[0].strip()
             data = json.loads(json_str)
             for raw in data.get("findings", []):
-                try: sev = Severity(raw.get("severity", "INFO").lower())
-                except ValueError: sev = Severity.INFO
-                findings.append(Finding(
-                    severity=sev, category=raw.get("category", "performance"),
-                    file=raw.get("file", "unknown"), line=raw.get("line", 0),
-                    message=raw.get("message", ""), suggestion=raw.get("suggestion", ""), agent="performance"
-                ))
+                try:
+                    sev = Severity(raw.get("severity", "INFO").lower())
+                except ValueError:
+                    sev = Severity.INFO
+                findings.append(
+                    Finding(
+                        severity=sev,
+                        category=raw.get("category", "performance"),
+                        file=raw.get("file", "unknown"),
+                        line=raw.get("line", 0),
+                        message=raw.get("message", ""),
+                        suggestion=raw.get("suggestion", ""),
+                        agent="performance",
+                    )
+                )
         except Exception:
             pass
         return findings
 
     def _write_findings(self, event: SecurityReviewEvent) -> None:
-        if not self.table: return
+        if not self.table:
+            return
         try:
             for i, finding in enumerate(event.findings):
-                self.table.put_item(Item={
-                    "pk": f"REV#{event.review_id}", "sk": f"FINDING#performance#{i}",
-                    "severity": finding.severity.value, "category": finding.category,
-                    "file": finding.file, "line": finding.line, "message": finding.message,
-                    "suggestion": finding.suggestion, "agent": "performance",
-                    "pr_number": event.pr_number, "repo": event.repo_full_name,
-                })
+                self.table.put_item(
+                    Item={
+                        "pk": f"REV#{event.review_id}",
+                        "sk": f"FINDING#performance#{i}",
+                        "severity": finding.severity.value,
+                        "category": finding.category,
+                        "file": finding.file,
+                        "line": finding.line,
+                        "message": finding.message,
+                        "suggestion": finding.suggestion,
+                        "agent": "performance",
+                        "pr_number": event.pr_number,
+                        "repo": event.repo_full_name,
+                    }
+                )
         except Exception as e:
             logger.error("Failed to write findings to DynamoDB: %s", str(e))

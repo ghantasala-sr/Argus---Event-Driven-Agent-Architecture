@@ -14,8 +14,7 @@ import logging
 import os
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from shared.github_client import GitHubClient
 from shared.models import (

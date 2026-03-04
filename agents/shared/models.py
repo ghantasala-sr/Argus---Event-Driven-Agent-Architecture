@@ -4,13 +4,10 @@ ALL events flow through these models. Never pass raw dicts between agents.
 Phase 1 defines: PRWebhookEvent, ParsedPREvent, and supporting models.
 """
 
-
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
-
 
 # --- Enums ---
 
@@ -58,7 +55,7 @@ class BaseEvent(BaseModel):
 
     event_type: str
     review_id: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     trace_id: str = ""
     agent_meta: AgentMeta = Field(default_factory=lambda: AgentMeta(agent="unknown"))
 
@@ -102,7 +99,7 @@ class FileChange(BaseModel):
     additions: int = 0  # Number of lines added
     deletions: int = 0  # Number of lines deleted
     patch: str = ""  # Raw unified diff for this file
-    source_path: Optional[str] = None  # Original path if renamed
+    source_path: str | None = None  # Original path if renamed
 
 
 class DiffChunk(BaseModel):
@@ -184,4 +181,3 @@ class SecurityReviewEvent(BaseEvent):
     findings: list[Finding] = Field(default_factory=list)
     files_analyzed: int = 0
     chunks_analyzed: int = 0
-

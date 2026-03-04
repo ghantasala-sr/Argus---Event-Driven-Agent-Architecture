@@ -6,7 +6,6 @@ import os
 from typing import Any
 
 import boto3
-
 from shared.bedrock_client import BedrockClient
 from shared.models import ParsedPREvent, SecurityReviewEvent
 from style.agent import StyleAgent
@@ -21,6 +20,7 @@ agent = StyleAgent(
     dynamodb_table=os.environ.get("DYNAMODB_TABLE"),
 )
 
+
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     topic_arn = os.environ.get("REVIEW_FINDINGS_TOPIC_ARN", "")
     if not topic_arn:
@@ -32,12 +32,18 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         try:
             envelope = json.loads(body)
             message_body = envelope.get("Message", body)
-            parsed_data = json.loads(message_body) if isinstance(message_body, str) else message_body
+            parsed_data = (
+                json.loads(message_body) if isinstance(message_body, str) else message_body
+            )
         except (json.JSONDecodeError, TypeError):
             parsed_data = json.loads(body)
 
         parsed_event = ParsedPREvent.model_validate(parsed_data)
-        logger.info("Processing style review for PR #%d in %s", parsed_event.pr_number, parsed_event.repo_full_name)
+        logger.info(
+            "Processing style review for PR #%d in %s",
+            parsed_event.pr_number,
+            parsed_event.repo_full_name,
+        )
 
         style_event: SecurityReviewEvent = agent.process(parsed_event)
 
@@ -49,6 +55,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "agent": {"DataType": "String", "StringValue": "style"},
             },
         )
-        logger.info("Published %d style findings for PR #%d", len(style_event.findings), parsed_event.pr_number)
+        logger.info(
+            "Published %d style findings for PR #%d",
+            len(style_event.findings),
+            parsed_event.pr_number,
+        )
 
     return {"statusCode": 200}

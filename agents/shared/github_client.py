@@ -12,10 +12,9 @@ import hashlib
 import hmac
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
-import jwt
-import requests
+import requests  # type: ignore
 from github import Github, GithubIntegration
 from github.PullRequest import PullRequest
 
@@ -45,7 +44,7 @@ class GitHubClient:
         self.app_id = app_id
         self.private_key = private_key
         self.installation_id = installation_id
-        self._github: Optional[Github] = None
+        self._github: Github | None = None
         self._token_expires_at: float = 0
 
     def _get_installation_token(self) -> str:
@@ -104,13 +103,15 @@ class GitHubClient:
         pr = repo.get_pull(pr_number)
 
         # Use requests to fetch diff with proper Accept header
+        auth_header = gh._Github__requester._Requester__authorizationHeader  # type: ignore
+        token = auth_header.split(" ")[1]
         headers = {
-            "Authorization": f"token {gh._Github__requester._Requester__authorizationHeader.split(' ')[1]}",
+            "Authorization": f"token {token}",
             "Accept": "application/vnd.github.v3.diff",
         }
         response = requests.get(pr.url, headers=headers, timeout=30)
         response.raise_for_status()
-        return response.text
+        return str(response.text)
 
     def get_pr_files(self, repo_full_name: str, pr_number: int) -> list[dict[str, Any]]:
         """Fetch the list of files changed in a pull request.

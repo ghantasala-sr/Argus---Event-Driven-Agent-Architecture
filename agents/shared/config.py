@@ -7,8 +7,7 @@ This module provides typed access with validation.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -53,9 +52,7 @@ class AgentConfig:
             values[field_name] = value
 
         if missing:
-            raise ValueError(
-                f"Missing required environment variables: {', '.join(missing)}"
-            )
+            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
         return cls(**values)
 
@@ -87,8 +84,6 @@ class WebhookConfig:
             values[field_name] = value
 
         if missing:
-            raise ValueError(
-                f"Missing required environment variables: {', '.join(missing)}"
-            )
+            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
         return cls(**values)
