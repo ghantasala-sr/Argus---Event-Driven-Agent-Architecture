@@ -5,14 +5,14 @@ Phase 1 defines: PRWebhookEvent, ParsedPREvent, and supporting models.
 """
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 # --- Enums ---
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Finding severity levels, ordered from most to least critical."""
 
     CRITICAL = "critical"
@@ -20,7 +20,7 @@ class Severity(str, Enum):
     INFO = "info"
 
 
-class FileStatus(str, Enum):
+class FileStatus(StrEnum):
     """Git file status in a PR diff."""
 
     ADDED = "added"

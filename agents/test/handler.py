@@ -3,12 +3,12 @@
 import json
 import logging
 import os
-from test.agent import TestAgent
 from typing import Any
 
 import boto3
 from shared.bedrock_client import BedrockClient
 from shared.models import ParsedPREvent, SecurityReviewEvent
+from test.agent import TestAgent
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
