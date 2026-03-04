@@ -192,3 +192,40 @@ class GitHubClient:
         )
 
         return hmac.compare_digest(expected_signature, signature_header)
+
+    def post_review(self, repo_full_name: str, pr_number: int, body: str) -> None:
+        """Post a review comment to a pull request.
+
+        Args:
+            repo_full_name: Repository full name.
+            pr_number: Pull request number.
+            body: Markdown body of the review comment.
+        """
+        pr = self.get_pr(repo_full_name, pr_number)
+        pr.create_issue_comment(body)
+
+    def set_commit_status(
+        self,
+        repo_full_name: str,
+        sha: str,
+        state: str,
+        context: str,
+        description: str,
+    ) -> None:
+        """Set the CI status check for a specific commit.
+
+        Args:
+            repo_full_name: Repository full name.
+            sha: Commit SHA to attach status to.
+            state: Status state ('error', 'failure', 'pending', or 'success').
+            context: A string label to differentiate this status (e.g., 'argus/review').
+            description: A short description of the status.
+        """
+        gh = self._get_github()
+        repo = gh.get_repo(repo_full_name)
+        commit = repo.get_commit(sha)
+        commit.create_status(
+            state=state,
+            description=description,
+            context=context,
+        )

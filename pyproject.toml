@@ -16,6 +16,7 @@ PyGithub = "^2.2"
 unidiff = "^0.7"
 cryptography = "^42.0"
 PyJWT = "^2.8"
+Jinja2 = "^3.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"

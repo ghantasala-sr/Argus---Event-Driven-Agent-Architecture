@@ -18,6 +18,9 @@ export interface AgentsStackProps extends cdk.StackProps {
     performanceQueue: sqs.Queue;
     testQueue: sqs.Queue;
     reviewFindingsTopic: sns.Topic;
+    summaryQueue: sqs.Queue;
+    learnQueue: sqs.Queue;
+    reviewCompleteTopic: sns.Topic;
 }
 
 export class AgentsStack extends cdk.Stack {
@@ -45,6 +48,9 @@ export class AgentsStack extends cdk.Stack {
             performanceQueue,
             testQueue,
             reviewFindingsTopic,
+            summaryQueue,
+            learnQueue,
+            reviewCompleteTopic,
         } = props;
 
         // --- Parser Agent Lambda ---
@@ -204,6 +210,56 @@ export class AgentsStack extends cdk.Stack {
         reviewsTable.grantWriteData(this.testFunction);
         testQueue.grantConsumeMessages(this.testFunction);
         this.testFunction.addToRolePolicy(new iam.PolicyStatement({ actions: ["bedrock:InvokeModel"], resources: ["arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-*"] }));
+
+        // --- Summary Agent Lambda ---
+        const summaryFunction = new lambda.Function(this, "SummaryFunction", {
+            functionName: `argus-${stage}-summary`,
+            runtime: lambda.Runtime.PYTHON_3_12,
+            handler: "summary.handler.handler",
+            code: lambda.Code.fromAsset(
+                path.join(__dirname, "../../agents"),
+                { exclude: ["**/__pycache__", "**/*.pyc"] }
+            ),
+            timeout: cdk.Duration.seconds(60),
+            memorySize: 512,
+            environment: {
+                STAGE: stage,
+                REVIEW_COMPLETE_TOPIC_ARN: reviewCompleteTopic.topicArn,
+                DYNAMODB_TABLE: reviewsTable.tableName,
+                GITHUB_APP_ID: "2951763", // Copied from parser
+                GITHUB_PRIVATE_KEY_SECRET: "arn:aws:secretsmanager:us-east-1:219494607505:secret:argus/github-app-private-key-z4h819",
+            },
+        });
+        summaryFunction.addEventSource(new lambdaEventSources.SqsEventSource(summaryQueue, { batchSize: 1, maxBatchingWindow: cdk.Duration.seconds(0) }));
+        reviewCompleteTopic.grantPublish(summaryFunction);
+        reviewsTable.grantReadData(summaryFunction); // Needs read to aggregate
+        summaryQueue.grantConsumeMessages(summaryFunction);
+        summaryFunction.addToRolePolicy(
+            new iam.PolicyStatement({
+                actions: ["secretsmanager:GetSecretValue"],
+                resources: ["arn:aws:secretsmanager:us-east-1:219494607505:secret:argus/github-app-private-key-*"],
+            })
+        );
+
+        // --- LTM Writer Agent Lambda ---
+        const ltmWriterFunction = new lambda.Function(this, "LTMWriterFunction", {
+            functionName: `argus-${stage}-ltm-writer`,
+            runtime: lambda.Runtime.PYTHON_3_12,
+            handler: "ltm_writer.handler.handler",
+            code: lambda.Code.fromAsset(
+                path.join(__dirname, "../../agents"),
+                { exclude: ["**/__pycache__", "**/*.pyc"] }
+            ),
+            timeout: cdk.Duration.seconds(30),
+            memorySize: 256,
+            environment: {
+                STAGE: stage,
+                DYNAMODB_TABLE: reviewsTable.tableName,
+            },
+        });
+        ltmWriterFunction.addEventSource(new lambdaEventSources.SqsEventSource(learnQueue, { batchSize: 1, maxBatchingWindow: cdk.Duration.seconds(0) }));
+        reviewsTable.grantWriteData(ltmWriterFunction);
+        learnQueue.grantConsumeMessages(ltmWriterFunction);
 
         // --- Outputs ---
 

@@ -33,6 +33,14 @@ const agentsStack = new AgentsStack(app, `${prefix}-Agents`, {
     parseQueue: messagingStack.parseQueue,
     prParsedTopic: messagingStack.prParsedTopic,
     reviewsTable: storageStack.reviewsTable,
+    securityQueue: messagingStack.securityQueue,
+    styleQueue: messagingStack.styleQueue,
+    performanceQueue: messagingStack.performanceQueue,
+    testQueue: messagingStack.testQueue,
+    reviewFindingsTopic: messagingStack.reviewFindingsTopic,
+    summaryQueue: messagingStack.summaryQueue,
+    learnQueue: messagingStack.learnQueue,
+    reviewCompleteTopic: messagingStack.reviewCompleteTopic,
     description: "Argus Lambda functions for AI review agents",
 });
 

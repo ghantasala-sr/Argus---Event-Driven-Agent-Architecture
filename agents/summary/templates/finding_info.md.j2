@@ -1,0 +1,7 @@
+<details>
+<summary><b>[{{ finding.category | title }}]</b> {{ finding.file }}{% if finding.line %}: Line {{ finding.line }}{% endif %}</summary>
+
+{{ finding.message }}
+
+> _{{ finding.suggestion }}_
+</details>

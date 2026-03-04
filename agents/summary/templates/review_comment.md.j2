@@ -1,0 +1,53 @@
+## Argus Code Review
+
+{% if verdict == "approve" %}
+✅ **All checks passed.** Argus found no critical security or performance vulnerabilities.
+{% elif verdict == "comment" %}
+⚠️ **Action Recommended.** Argus identified several warnings and style issues, but no critical vulnerabilities blocking merge.
+{% else %}
+❌ **Changes Requested.** Argus identified **CRITICAL** issues that must be addressed before merging.
+{% endif %}
+
+---
+
+### 🚨 Critical Findings ({{ critical_findings|length }})
+{% if critical_findings %}
+{% for finding in critical_findings %}
+{{ finding_partial(finding) }}
+{% endfor %}
+{% else %}
+*No critical issues found.*
+{% endif %}
+
+---
+
+### ⚠️ Warnings ({{ warning_findings|length }})
+{% if warning_findings %}
+<details>
+<summary>Click to view warnings</summary>
+
+{% for finding in warning_findings %}
+{{ finding_partial(finding) }}
+{% endfor %}
+</details>
+{% else %}
+*No warnings found.*
+{% endif %}
+
+---
+
+### 💡 Info & Style Suggestions ({{ info_findings|length }})
+{% if info_findings %}
+<details>
+<summary>Click to view minor suggestions</summary>
+
+{% for finding in info_findings %}
+{{ finding_partial(finding) }}
+{% endfor %}
+</details>
+{% else %}
+*No style issues found.*
+{% endif %}
+
+---
+*Argus analyzed {{ stats.total_files }} files ({{ stats.total_additions }} additions) in {{ execution_time_ms }}ms.*

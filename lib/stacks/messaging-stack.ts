@@ -35,6 +35,16 @@ export class MessagingStack extends cdk.Stack {
     public readonly testQueue: sqs.Queue;
     /** Dead letter queue for failed test scans */
     public readonly testDlq: sqs.Queue;
+    /** SNS topic for phase 4 completion events */
+    public readonly reviewCompleteTopic: sns.Topic;
+    /** SQS queue that feeds the Summary Agent */
+    public readonly summaryQueue: sqs.Queue;
+    /** Dead letter queue for failed summary generation */
+    public readonly summaryDlq: sqs.Queue;
+    /** SQS queue that feeds the LTM Writer (Learning) Agent */
+    public readonly learnQueue: sqs.Queue;
+    /** Dead letter queue for failed learning extraction */
+    public readonly learnDlq: sqs.Queue;
 
     constructor(scope: Construct, id: string, props: MessagingStackProps) {
         super(scope, id, props);
@@ -56,6 +66,11 @@ export class MessagingStack extends cdk.Stack {
         this.reviewFindingsTopic = new sns.Topic(this, "ReviewFindingsTopic", {
             topicName: `argus-${stage}-review-findings`,
             displayName: "Argus Review Agent Findings",
+        });
+
+        this.reviewCompleteTopic = new sns.Topic(this, "ReviewCompleteTopic", {
+            topicName: `argus-${stage}-review-complete`,
+            displayName: "Argus Final Review Completed",
         });
 
         // --- SQS Queues ---
@@ -130,6 +145,30 @@ export class MessagingStack extends cdk.Stack {
             deadLetterQueue: { queue: this.testDlq, maxReceiveCount: 3 },
         });
 
+        // Summary queue
+        this.summaryDlq = new sqs.Queue(this, "SummaryDlq", {
+            queueName: `argus-${stage}-summary-dlq`,
+            retentionPeriod: cdk.Duration.days(14),
+        });
+        this.summaryQueue = new sqs.Queue(this, "SummaryQueue", {
+            queueName: `argus-${stage}-summary-queue`,
+            visibilityTimeout: cdk.Duration.seconds(300),
+            retentionPeriod: cdk.Duration.days(4),
+            deadLetterQueue: { queue: this.summaryDlq, maxReceiveCount: 3 },
+        });
+
+        // LTM Learning queue
+        this.learnDlq = new sqs.Queue(this, "LearnDlq", {
+            queueName: `argus-${stage}-learn-dlq`,
+            retentionPeriod: cdk.Duration.days(14),
+        });
+        this.learnQueue = new sqs.Queue(this, "LearnQueue", {
+            queueName: `argus-${stage}-learn-queue`,
+            visibilityTimeout: cdk.Duration.seconds(120),
+            retentionPeriod: cdk.Duration.days(4),
+            deadLetterQueue: { queue: this.learnDlq, maxReceiveCount: 3 },
+        });
+
         // --- Subscriptions ---
 
         // Wire: pr.webhook SNS → parse-queue SQS
@@ -148,6 +187,12 @@ export class MessagingStack extends cdk.Stack {
         this.prParsedTopic.addSubscription(new subscriptions.SqsSubscription(this.styleQueue));
         this.prParsedTopic.addSubscription(new subscriptions.SqsSubscription(this.performanceQueue));
         this.prParsedTopic.addSubscription(new subscriptions.SqsSubscription(this.testQueue));
+
+        // Wire: review.findings SNS → summary-queue SQS
+        this.reviewFindingsTopic.addSubscription(new subscriptions.SqsSubscription(this.summaryQueue));
+
+        // Wire: review.complete SNS → learn-queue SQS
+        this.reviewCompleteTopic.addSubscription(new subscriptions.SqsSubscription(this.learnQueue));
 
         // --- Outputs ---
 
@@ -194,6 +239,16 @@ export class MessagingStack extends cdk.Stack {
         new cdk.CfnOutput(this, "TestQueueUrl", {
             value: this.testQueue.queueUrl,
             exportName: `${stage}-TestQueueUrl`,
+        });
+
+        new cdk.CfnOutput(this, "SummaryQueueUrl", {
+            value: this.summaryQueue.queueUrl,
+            exportName: `${stage}-SummaryQueueUrl`,
+        });
+
+        new cdk.CfnOutput(this, "LearnQueueUrl", {
+            value: this.learnQueue.queueUrl,
+            exportName: `${stage}-LearnQueueUrl`,
         });
     }
 }
